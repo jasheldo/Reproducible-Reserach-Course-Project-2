@@ -30,6 +30,10 @@ dir.create(file.path("./", "data"), showWarnings = FALSE)
 setwd(file.path("./"))
 download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "./data/FStormData.csv.bz2")
 stormdata <- read.csv(bzfile("./data/FStormData.csv.bz2"), header = TRUE, sep = ",", na.strings = "NA", stringsAsFactors = FALSE)
+download.file("https://raw.githubusercontent.com/mauricio/reproductible-research-assignment-2/master/replacements.csv", "./data/replacements.csv")
+replacements <- read.csv("./data/replacements.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+download.file("https://raw.githubusercontent.com/mauricio/reproductible-research-assignment-2/master/multipliers.csv", "./data/multipliers.csv")
+multipliers <- read.csv("./data/multipliers.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
 ```
 
 Let's what we have:
@@ -43,9 +47,17 @@ summarize(stormdata)
 
 ```
 
-
+Reference to some useful code from [Mauricio](http://mauricio.github.io/2014/12/23/getting-and-clearning-data.html).
 ```{r}
-stormdata$BGN_DATE <- as.POSIXct(stormdata$BGN_DATE, format = "%m/%d/%Y %h:%M:%S")
+stormsubset <- select(stormdata, EVTYPE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+
+stormsubset$EVTYPE <- toupper(gsub("^\\s+|\\s+$", "", stormsubset$EVTYPE))
+eventFor <- function( evtype ) {
+  replacements[replacements$event == evtype,]$actual
+}
+stormsubset$EVTYPE <- sapply(stormsubset$EVTYPE, eventFor)
+
+stormsubset %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG)
 ```
 
 ## Results
