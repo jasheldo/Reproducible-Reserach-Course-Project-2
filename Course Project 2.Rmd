@@ -144,7 +144,7 @@ small_summ <- stormsmall %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATA
 head(arrange(small_summ, desc(FATALITIES)))
 head(arrange(small_summ, desc(INJURIES)))
 small <- arrange(small_summ, desc(FATALITIES))
-barplot(small$FATALITIES[1:5], names.arg = small$EVTYPE[1:5], col = c("blue", "red", "green", "yellow", "orange"), xlab = "Event Type", ylab = "Total Fatalities Since 1/1/1993", main = "Top 5 Events by Fatalities Since 1/1/1993")
+barplot(small$FATALITIES[1:5], names.arg = small$EVTYPE[1:5], col = c("blue", "red", "green", "yellow", "orange"), xlab = "Event Type", ylab = "Total Fatalities Since 1/1/1993", main = "Top 5 Events by Fatalities Since 1/1/1993", cex.names = 0.5)
 ```
 
 What's interesting about what we're seeing between this smaller summary and the prior one is the total number of heat incidents remained unchanged.  That suggests that heat, as an event, was not being recorded in the early years.
@@ -156,7 +156,7 @@ estormsmall <- mutate(stormsmall, econ = ( PROPDMG + CROPDMG) / 10^4)
 esmall_summ <- estormsmall %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, econ)
 head(arrange(esmall_summ, desc(econ)))
 esmall <- arrange(esmall_summ, desc(econ))
-barplot(esmall$econ[1:5], names.arg = esmall$EVTYPE[1:5], col = c("blue", "red", "green", "yellow", "orange"), xlab = "Event Type", ylab = "Total Economic Impact Since 1/1/1993 (in billions)", main = "Top 5 Events by Economic Impact Since 1/1/1993")
+barplot(esmall$econ[1:5], names.arg = esmall$EVTYPE[1:5], col = c("blue", "red", "green", "yellow", "orange"), xlab = "Event Type", ylab = "Total Economic Impact Since 1/1/1993 (in billions)", main = "Top 5 Events by Economic Impact Since 1/1/1993", cex.names = 0.5)
 ```
 
 What we see here is tornados and flash floods account for the largest economic impacting events.
