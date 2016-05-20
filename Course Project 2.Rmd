@@ -1,18 +1,18 @@
 ---
-title: "Course Project 2"
+title: "Course Project 2 - Economic and Human Casuality Review of Natural Disasters in the United States"
 author: "James Sheldon"
 date: "May 19, 2016"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
-library(lubridate)
-library(ggplot2)
 ```
 
 ## Synopsis
+
+Through analysis of data on natural disasters made available by the (U.S. National Oceanic and Atmospheric Administration \(NOAA\))[http://www.noaa.gov] database, an analysis was conducted to understand the economic and life impacts of natural disasters.  It was found that tornados have the most overall impact on both the economy and human fatalities by a wide margin.  The second widest impacting event on human life is heat and the second widest impacting event on economics is flash flooding.
 
 ## Introduction
 
@@ -23,6 +23,12 @@ This project involves exploring the U.S. National Oceanic and Atmospheric Admini
 ## Data Processing
 
 The data for this assignment come in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size.
+
+Before we get too deep into the analysis, here is a summary of the machine and the software being used to perform this analysis:
+
+```{r}
+sessionInfo()
+```
 
 ```{r data}
 
@@ -40,42 +46,117 @@ Let's what we have:
 
 ```{r summary}
 head(stormdata)
-tail(stormdata)
 str(stormdata)
-summarise(stormdata)
-summarize(stormdata)
+```
+
+*Yuck*. Let's tidy this up a bit.  In particular, the dates should be formated properly.  For purposes of this analysis we needn't worry about the times.
+
+Let's turn `BGN_DATE` into a useable date format.
+
+```{r}
+stormdata$BGN_DATE <- as.Date(stormdata$BGN_DATE, "%m/%d/%Y")
 
 ```
 
-Reference to some useful code from [Mauricio](http://mauricio.github.io/2014/12/23/getting-and-clearning-data.html).
-```{r}
-stormsubset <- select(stormdata, EVTYPE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+Now let's grab just a subset of the data needed for the analysis.
 
+```{r}
+stormsubset <- select(stormdata, EVTYPE, BGN_DATE, FATALITIES, INJURIES, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP)
+```
+
+Next up, based on what we're being asked to review, we need to get a handle on a few of the parameters.  Most namely we need to focus on getting the economic identifiers `PROPDMGEXP` and `CROPDMGEXP` uniform throughout the data.  Let's take a look at each of these to see what they look like.
+
+```{r}
+stormsubset %>% group_by(PROPDMGEXP) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+```
+
+We can see from the above summary the different types of values in the `PROPDMGEXP` field.  
+
+One observation definitely jumps out.  Property damage, fatalities and inuries are quite large for values of "K" and "M" in the `PROPDMGEXP` field.
+
+This needs to be cleaned up a bit to be useful to us for analysis purposes.  In particular, this is not a case sensitive field so we need to replace lower cases with upper cases.  Let's take care of that now and rerun the summary.
+
+```{r}
+stormsubset$PROPDMGEXP <- toupper(stormsubset$PROPDMGEXP)
+```
+
+Let's take another look.
+
+```{r}
+stormsubset %>% group_by(PROPDMGEXP) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+```
+
+Much better!
+
+Now let's do the same thing for the `CROPDMGEXP` field.
+
+```{r}
+stormsubset %>% group_by(CROPDMGEXP) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+```
+
+There are case sensitivity issues again.  But that's an easy fix.  Let's take care of it and re-review the summary.
+
+```{r}
+stormsubset$CROPDMGEXP <- toupper(stormsubset$CROPDMGEXP)
+stormsubset %>% group_by(CROPDMGEXP) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+```
+
+Much better!  As we can see from this summary, events with values of "K" and "M" in the `CROPDMGEXP` field are causing some significant fatalities, injuries, property damage and crop damage.  Bottom line, these are miserable.  Also worth noting are blank values.  These yield significant impacts to fatalities, injuries and property damage but no real issue to crops.
+
+Let's take a look at the events, match them up and get a sense in actual English what's going on.
+
+For this part of the data cleanup process I defer to the excellent helping hand provided by  [Mauricio](http://mauricio.github.io/2014/12/23/getting-and-clearning-data.html).  He walked the extra mile by taking a look at the following summary and cleaned up the event names to be much more cogent and simplified.
+```{r}
+stormsubset %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+```
+
+The following code first puts all `EVTYPE` observations to upper case for uniformity.  It then takes each observation, cleans up extra spacing and finally, via the `eventFor` function, maps the events to a much simplified and cleaned up set.
+
+```{r}
 stormsubset$EVTYPE <- toupper(gsub("^\\s+|\\s+$", "", stormsubset$EVTYPE))
 eventFor <- function( evtype ) {
   replacements[replacements$event == evtype,]$actual
 }
 stormsubset$EVTYPE <- sapply(stormsubset$EVTYPE, eventFor)
 
-stormsubset %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG)
+stormsubset %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
 ```
+
+Much better!  We've now taken a summarized set of 985 event types and condensed it to 187!
 
 ## Results
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Now that we have a uniform naming convention it's a simple matter to order our events by fatalities, injuries or economic metrics to see the top offenders.  Let's begin with human casualties.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+event_summ <- stormsubset %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+head(arrange(event_summ, desc(FATALITIES)))
+head(arrange(event_summ, desc(INJURIES)))
 ```
 
-## Including Plots
+Across the full data set we see that *tornados* and *heat*, respectively, result in the most significant number of human catastrophies.
 
-You can also embed plots, for example:
+Just for fun, since we know the data is more complete for the later years, let's perform this same analysis but this time let's only look at data from 1/1/1993 to the most current.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+stormsmall <- filter(stormsubset, BGN_DATE >= 1/1/1993)
+small_summ <- stormsmall %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, PROPDMG, CROPDMG)
+head(arrange(small_summ, desc(FATALITIES)))
+head(arrange(small_summ, desc(INJURIES)))
+small <- arrange(small_summ, desc(FATALITIES))
+barplot(small$FATALITIES[1:5], names.arg = small$EVTYPE[1:5], col = c("blue", "red", "green", "yellow", "orange"), xlab = "Event Type", ylab = "Total Fatalities Since 1/1/1993", main = "Top 5 Events by Fatalities Since 1/1/1993")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+What's interesting about what we're seeing between this smaller summary and the prior one is the total number of heat incidents remained unchanged.  That suggests that heat, as an event, was not being recorded in the early years.
+
+Let's take a look at these same metrics, but this time focusing on economic metrics.  In this instance, there are two differnt economic metrics being observed:  crop damage and property damage.  We create a new field, "econ", which is the sum of these two metrics so we have one value to review.  It is being scaled by 10^4 for cleanliness sake.
+
+```{r}
+estormsmall <- mutate(stormsmall, econ = ( PROPDMG + CROPDMG) / 10^4)
+esmall_summ <- estormsmall %>% group_by(EVTYPE) %>% summarise_each(funs(sum), FATALITIES, INJURIES, econ)
+head(arrange(esmall_summ, desc(econ)))
+esmall <- arrange(esmall_summ, desc(econ))
+barplot(esmall$econ[1:5], names.arg = esmall$EVTYPE[1:5], col = c("blue", "red", "green", "yellow", "orange"), xlab = "Event Type", ylab = "Total Economic Impact Since 1/1/1993 (in billions)", main = "Top 5 Events by Economic Impact Since 1/1/1993")
+```
+
+What we see here is tornados and flash floods account for the largest economic impacting events.
